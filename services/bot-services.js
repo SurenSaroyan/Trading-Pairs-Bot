@@ -28,7 +28,14 @@ const callbackObject = {
                 }
             });
             const {data:{balances}} = data;
-            await bot.telegram.sendMessage(id,`Your balance is ${balances && balances.length ? balances : 0}`);
+            let text = ''
+            if (balances && balances.length) {
+                text = balances.reduce((acc,item)=>{
+                    acc += `${item.asset} -> ${item.free} (${(+item.locked) ? 'locked' : 'unlocked'})\n`
+                    return acc;
+                },'')
+            }
+            await bot.telegram.sendMessage(id,`Your balance is ${text ? '\n' + text : 0}`);
         } catch (e) {
             await bot.telegram.sendMessage(id,'User not found');
         }
