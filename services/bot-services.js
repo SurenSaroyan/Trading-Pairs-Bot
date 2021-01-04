@@ -3,13 +3,10 @@ const { Telegraf } = require('telegraf');
 
 const crypto = require('crypto');
 
-const getServerTime = async () => {
-    // const { data : { serverTime }} = await axios.get('https://api.binance.com/api/v3/time');
-    // console.log(serverTime, '------', Date.now());
-    // console.log(serverTime - Date.now());
+const generateTime =  () => {
     return 'timestamp=' + Date.now();
 }
-const apiSecret = 'NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j';
+const apiSecret = 'dVVi5CCK0A45oQFXt5deDSys7vJJQB75wmSTFCY9qzjm6OLd49NNEztsqZrvOr69';
 
 const preparedData = (arr) => {
     const data = arr.reduce((acc,item,index) => {
@@ -30,7 +27,7 @@ const preparedData = (arr) => {
 async function generateSignature(query_string) {
     return await crypto
         .createHmac('sha256', apiSecret)
-        .update(`recvWindow=60000&$timestamp=`)
+        .update(`recvWindow=60000&${query_string}`)
         .digest('hex');
 }
 
@@ -46,18 +43,22 @@ const callbackObject = {
         });
     },
     getUserBalance: async (bot,id) => {
-        const str = await getServerTime();
-        const signature = await generateSignature(str);
-        const data = await axios.get(`https://api.binance.com/api/v3/account?timestamp=1609770871957&signature=8ca28bcc30105cba76ea7dcc4699cca878688b41c602b4ffe60acfac4d1cdb18`, {
-            headers: {
-                'X-MBX-APIKEY': 'LtyDiyRrkEF9hsKCI2UbtjJXJPFA0S9wPkD5m1XukCOxpDCCnRXmFMSOlpqXPfXz',
-            }
-        });
-        bot.telegram.sendMessage(id,'User balance', {
-            reply_markup : {
-                inline_keyboard: [{text: 'aaa',callback_data: 'item.symbol' }]
-            }
-        });
+        bot.telegram.sendMessage(id,'Please type your API KEY in this format API_KEY=$API_KEY');
+    },
+    getAccountBalance: async (bot,id,APIKEY) => {
+        try {
+            const str = generateTime();
+            const signature = await generateSignature(str);
+            const data = await axios.get(`https://api.binance.com/api/v3/account?recvWindow=60000&${str}&signature=${signature}`, {
+                headers: {
+                    'X-MBX-APIKEY': `${APIKEY}`,
+                }
+            });
+            const {data:{balances}} = data;
+            bot.telegram.sendMessage(id,`Your balance is ${balances && balances.length ? balances : 0}`);
+        }catch (e) {
+            bot.telegram.sendMessage(id,'User not found');
+        }
     }
 }
 
@@ -87,7 +88,11 @@ module.exports = () => {
 
     bot.on('message',  msg => {
         const chatId = msg.chat.id;
-
+        if (msg.update.message.text.includes('API_KEY')) {
+            const API_KEY = msg.update.message.text.split('=')[1];
+            callbackObject.getAccountBalance(bot,chatId,API_KEY);
+            return;
+        }
         bot.telegram.sendMessage(chatId,'Get All trading pairs', {
             reply_markup : {
                 inline_keyboard: [
