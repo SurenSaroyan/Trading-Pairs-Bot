@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { MAX } = require('./constants');
 
 module.exports = {
     generateSignature: (query_string) => {
@@ -7,7 +8,7 @@ module.exports = {
             .update(`recvWindow=60000&${query_string}`)
             .digest('hex');
     },
-    preparedData: (bot,arr) => {
+    preparedButtons: (arr) => {
         const data = arr.reduce((acc,item,index) => {
             if ((index + 1) % 5) {
                 acc.current.push({text: item.symbol,callback_data: item.symbol });
@@ -22,4 +23,17 @@ module.exports = {
         });
         return [...data.sorted,[...data.current]]
     },
+
+    preparedSubscriptions: (arr) => {
+        let max = `MAX Borders is:\n`;
+        let min = `MIN Borders is:\n`;
+        arr.sort((a,b) => a.key - b.key).map(item => {
+            if (item.border === MAX) {
+                max += `${item.key.toUpperCase()} -> ${item.value}\n`;
+                return;
+            }
+            min += `${item.key.toUpperCase()} -> ${item.value}\n`
+        });
+        return `${max}\n${min}`
+    }
 }
